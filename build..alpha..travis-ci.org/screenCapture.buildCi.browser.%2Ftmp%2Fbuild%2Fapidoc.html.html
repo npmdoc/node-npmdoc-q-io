@@ -74,8 +74,26 @@
 
         <li>
 
+            <a class="apidocElementLiA" href="#apidoc.element.q-io.fs_root">
+            function <span class="apidocSignatureSpan">q-io.</span>fs_root
+            <span class="apidocSignatureSpan">(outer, root)</span>
+            </a>
+
+        </li>
+
+        <li>
+
             <a class="apidocElementLiA" href="#apidoc.element.q-io.reader">
             function <span class="apidocSignatureSpan">q-io.</span>reader
+            <span class="apidocSignatureSpan">(_stream, charset)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.q-io.writer">
+            function <span class="apidocSignatureSpan">q-io.</span>writer
             <span class="apidocSignatureSpan">(_stream, charset)</span>
             </a>
 
@@ -1151,6 +1169,19 @@
             <a class="apidocElementLiA" href="#apidoc.element.q-io.fs_common.update">
             function <span class="apidocSignatureSpan">q-io.fs_common.</span>update
             <span class="apidocSignatureSpan">(exports, workingDirectory)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.q-io.fs_root">module q-io.fs_root</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.q-io.fs_root.fs_root">
+            function <span class="apidocSignatureSpan">q-io.</span>fs_root
+            <span class="apidocSignatureSpan">(outer, root)</span>
             </a>
 
         </li>
@@ -2485,6 +2516,19 @@
 
     </ol></li>
 
+    <li class="apidocModuleLi"><a href="#apidoc.module.q-io.writer">module q-io.writer</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.q-io.writer.writer">
+            function <span class="apidocSignatureSpan">q-io.</span>writer
+            <span class="apidocSignatureSpan">(_stream, charset)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
 </ol></div>
 
 <div class="apidocSectionDiv">
@@ -2531,6 +2575,137 @@
     };
     return self;
 }</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.q-io.fs_root" id="apidoc.element.q-io.fs_root">
+        function <span class="apidocSignatureSpan">q-io.</span>fs_root
+        <span class="apidocSignatureSpan">(outer, root)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function RootFs(outer, root) {
+    var inner = Object.create(BOOT);
+
+    function attenuate(path) {
+
+        // the machinations of projecting a path inside a
+        // subroot
+        var actual;
+        // if it's absolute, we want the path relative to
+        // the root of the inner file system
+        if (outer.isAbsolute(path)) {
+            actual = outer.relativeFromDirectory(outer.ROOT, path);
+        } else {
+            actual = path;
+        }
+        // we join the path onto the root of the inner file
+        // system so that parent references from the root
+        // return to the root, emulating standard unix
+        // behavior
+        actual = outer.join(outer.ROOT, actual);
+        // then we reconstruct the path relative to the
+        // inner root
+        actual = outer.relativeFromDirectory(outer.ROOT, actual);
+        // and rejoin it on the outer root
+        actual = outer.join(root, actual);
+        // and find the corresponding real path
+        return outer.canonical(actual)
+        .then(function (actual) {
+            return actual;
+        }, function () {
+            return actual;
+        }).then(function (actual) {
+            // and verify that the outer canonical path is
+            // actually inside the inner canonical path, to
+            // prevent break-outs
+            if (outer.contains(root, actual)) {
+                return {
+                    "inner": outer.join(outer.ROOT, outer.relativeFromDirectory(root, actual)),
+                    "outer": actual
+                };
+            } else {
+                return Q.reject("Can't find: " + JSON.stringify(path));
+            }
+        });
+    }
+
+    function workingDirectory() {
+        return outer.ROOT;
+    }
+
+    COMMON.update(inner, workingDirectory);
+
+    inner.list = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.list(path.outer);
+        }).then(null, function (reason) {
+            return Q.reject("Can't list " + JSON.stringify(path));
+        });
+    };
+
+    inner.open = function (path, flags, charset) {
+        return attenuate(path).then(function (path) {
+            return outer.open(path.outer, flags, charset);
+        }).then(null, function (reason) {
+            return Q.reject("Can't open " + JSON.stringify(path));
+        });
+    };
+
+    inner.stat = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.stat(path.outer);
+        }).then(null, function (reason) {
+            return Q.reject("Can't stat " + JSON.stringify(path));
+        });
+    };
+
+    inner.statLink = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.statLink(path.outer);
+        }).then(null, function (reason) {
+            return Q.reject("Can't statLink " + JSON.stringify(path));
+        });
+    };
+
+    inner.canonical = function (path) {
+        return attenuate(path).then(function (path) {
+            return path.inner;
+        }).then(null, function (reason) {
+            return Q.reject("Can't find canonical of " + JSON.stringify(path));
+        });
+    };
+
+    inner.makeDirectory = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.makeDirectory(path.outer);
+        }).catch(function (error) {
+            throw new Error("Can't make directory " + JSON.stringify(path));
+        });
+    };
+
+    inner.removeDirectory = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.removeDirectory(path.outer);
+        }).catch(function (error) {
+            throw new Error("Can't remove directory " + JSON.stringify(path));
+        });
+    };
+
+    inner.remove = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.remove(path.outer);
+        }).catch(function (error) {
+            throw new Error("Can't remove " + JSON.stringify(path));
+        });
+    };
+
+    inner.makeTree = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.makeT ...</pre></li>
     <li>example usage<pre class="apidocCodePre">n/a</pre></li>
     </ul>
 
@@ -2622,6 +2797,113 @@
     self.node = _stream;
 
     return begin.promise;
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.q-io.writer" id="apidoc.element.q-io.writer">
+        function <span class="apidocSignatureSpan">q-io.</span>writer
+        <span class="apidocSignatureSpan">(_stream, charset)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function Writer(_stream, charset) {
+    var self = Object.create(Writer.prototype);
+
+    if (charset &amp;&amp; _stream.setEncoding) // TODO complain about inconsistency
+        _stream.setEncoding(charset);
+
+    var drained = Q.defer();
+
+    _stream.on("error", function (reason) {
+        drained.reject(reason);
+        drained = Q.defer();
+    });
+
+    _stream.on("drain", function () {
+        drained.resolve();
+        drained = Q.defer();
+    });
+
+<span class="apidocCodeCommentSpan">    /***
+     * Writes content to the stream.
+     * @param {String} content
+     * @returns {Promise * Undefined} a promise that will
+     * be resolved when the buffer is empty, meaning
+     * that all of the content has been sent.
+     */
+</span>    self.write = function (content) {
+        if (!_stream.writeable &amp;&amp; !_stream.writable)
+            return Q.reject(new Error("Can't write to non-writable (possibly closed) stream"));
+        if (typeof content !== "string") {
+            content = new Buffer(content);
+        }
+        if (!_stream.write(content)) {
+            return drained.promise;
+        } else {
+            return Q.resolve();
+        }
+    };
+
+    /***
+     * Waits for all data to flush on the stream.
+     *
+     * @returns {Promise * Undefined} a promise that will
+     * be resolved when the buffer is empty
+     */
+    self.flush = function () {
+        return drained.promise;
+    };
+
+    /***
+     * Closes the stream, waiting for the internal buffer
+     * to flush.
+     *
+     * @returns {Promise * Undefined} a promise that will
+     * be resolved when the stream has finished writing,
+     * flushing, and closed.
+     */
+    self.close = function () {
+        var finished;
+
+        if (supportsFinish) { // new Streams, listen for `finish` event
+            finished = Q.defer();
+            _stream.on("finish", function () {
+                finished.resolve();
+            });
+            _stream.on("error", function (reason) {
+                finished.reject(reason);
+            });
+        }
+
+        _stream.end();
+        drained.resolve(); // we will get no further drain events
+        if (finished) { // closing not explicitly observable
+            return finished.promise;
+        } else {
+            return Q(); // just resolve for old Streams
+        }
+    };
+
+    /***
+     * Terminates writing on a stream, closing before
+     * the internal buffer drains.
+     *
+     * @returns {Promise * Undefined} a promise that will
+     * be resolved when the stream has finished closing.
+     */
+    self.destroy = function () {
+        _stream.destroy();
+        drained.resolve(); // we will get no further drain events
+        return Q.resolve(); // destruction not explicitly observable
+    };
+
+    self.node = _stream;
+
+    return Q(self); // todo returns the begin.promise
 }</pre></li>
     <li>example usage<pre class="apidocCodePre">n/a</pre></li>
     </ul>
@@ -4685,21 +4967,21 @@ return Q.when(self.stat(source), function (stat) {
     }).then(Q.all).then(concat);
 }</pre></li>
     <li>example usage<pre class="apidocCodePre">...
-
-
-
-require("collections/shim");
-var Q = require("q");
-var FS = require("./fs");
-
-FS.<span class="apidocCodeKeywordSpan">listTree</span>(".coverage_data", function (name, stat) {
-return (/^\.coverage_data\/coveragefile/).test(name);
-})
-.then(function (list) {
-return Q.all(list.map(function (file) {
-    return FS.read(file)
-    .then(function (content) {
-        return JSON.parse(content);
+    if (include) {
+        paths.push([basePath]);
+    }
+    if (include !== null &amp;&amp; stat.isDirectory()) {
+        return Q.when(self.list(basePath), function (children) {
+            paths.push.apply(paths, children.map(function (child) {
+                var path = self.join(basePath, child);
+                return self.<span class="apidocCodeKeywordSpan">listTree</span>(path, guard);
+            }));
+            return paths;
+        });
+    } else {
+        return paths;
+    }
+});
 ...</pre></li>
     </ul>
 
@@ -5157,21 +5439,21 @@ exports.exists = function (path) {
     return target.join(this.SEPARATOR);
 }</pre></li>
     <li>example usage<pre class="apidocCodePre">...
-console.log("            &lt;th&gt;File&lt;/th&gt;");
-console.log("            &lt;th&gt;Percentage&lt;/th&gt;");
-console.log("            &lt;th&gt;Missing&lt;/th&gt;");
-console.log("        &lt;/tr&gt;");
-console.log("    &lt;/thead&gt;");
-console.log("    &lt;tbody&gt;");
-Object.forEach(coverage.files, function (file, path) {
-    path = FS.<span class="apidocCodeKeywordSpan">relativeFromDirectory</span>(__dirname, path);
-    if (/^spec/.test(path))
-        return;
-    console.log("        &lt;tr&gt;");
-    console.log("            &lt;td&gt;&lt;code&gt;" + path + "&lt;/code&gt;&lt;/td&gt;");
-    console.log("            &lt;td&gt;" + (file.stats.percentage * 100).toFixed(0) + "%&lt;/td&gt;");
-    console.log("            &lt;td&gt;" + file.stats.missing + "&lt;/td&gt;");
-    console.log("        &lt;/tr&gt;");
+    return this.join(workingDirectory(), path);
+};
+
+exports.relative = function (source, target) {
+    var self = this;
+    return Q.when(this.isDirectory(source), function (isDirectory) {
+        if (isDirectory) {
+            return self.<span class="apidocCodeKeywordSpan">relativeFromDirectory</span>(source, target);
+        } else {
+            return self.relativeFromFile(source, target);
+        }
+    });
+};
+
+exports.relativeFromFile = function (source, target) {
 ...</pre></li>
     </ul>
 
@@ -6585,6 +6867,142 @@ inner.list = function (path) {
         return Q.reject("Can't list " + JSON.stringify(path));
     });
 ...</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.q-io.fs_root" id="apidoc.module.q-io.fs_root">module q-io.fs_root</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.q-io.fs_root.fs_root" id="apidoc.element.q-io.fs_root.fs_root">
+        function <span class="apidocSignatureSpan">q-io.</span>fs_root
+        <span class="apidocSignatureSpan">(outer, root)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function RootFs(outer, root) {
+    var inner = Object.create(BOOT);
+
+    function attenuate(path) {
+
+        // the machinations of projecting a path inside a
+        // subroot
+        var actual;
+        // if it's absolute, we want the path relative to
+        // the root of the inner file system
+        if (outer.isAbsolute(path)) {
+            actual = outer.relativeFromDirectory(outer.ROOT, path);
+        } else {
+            actual = path;
+        }
+        // we join the path onto the root of the inner file
+        // system so that parent references from the root
+        // return to the root, emulating standard unix
+        // behavior
+        actual = outer.join(outer.ROOT, actual);
+        // then we reconstruct the path relative to the
+        // inner root
+        actual = outer.relativeFromDirectory(outer.ROOT, actual);
+        // and rejoin it on the outer root
+        actual = outer.join(root, actual);
+        // and find the corresponding real path
+        return outer.canonical(actual)
+        .then(function (actual) {
+            return actual;
+        }, function () {
+            return actual;
+        }).then(function (actual) {
+            // and verify that the outer canonical path is
+            // actually inside the inner canonical path, to
+            // prevent break-outs
+            if (outer.contains(root, actual)) {
+                return {
+                    "inner": outer.join(outer.ROOT, outer.relativeFromDirectory(root, actual)),
+                    "outer": actual
+                };
+            } else {
+                return Q.reject("Can't find: " + JSON.stringify(path));
+            }
+        });
+    }
+
+    function workingDirectory() {
+        return outer.ROOT;
+    }
+
+    COMMON.update(inner, workingDirectory);
+
+    inner.list = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.list(path.outer);
+        }).then(null, function (reason) {
+            return Q.reject("Can't list " + JSON.stringify(path));
+        });
+    };
+
+    inner.open = function (path, flags, charset) {
+        return attenuate(path).then(function (path) {
+            return outer.open(path.outer, flags, charset);
+        }).then(null, function (reason) {
+            return Q.reject("Can't open " + JSON.stringify(path));
+        });
+    };
+
+    inner.stat = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.stat(path.outer);
+        }).then(null, function (reason) {
+            return Q.reject("Can't stat " + JSON.stringify(path));
+        });
+    };
+
+    inner.statLink = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.statLink(path.outer);
+        }).then(null, function (reason) {
+            return Q.reject("Can't statLink " + JSON.stringify(path));
+        });
+    };
+
+    inner.canonical = function (path) {
+        return attenuate(path).then(function (path) {
+            return path.inner;
+        }).then(null, function (reason) {
+            return Q.reject("Can't find canonical of " + JSON.stringify(path));
+        });
+    };
+
+    inner.makeDirectory = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.makeDirectory(path.outer);
+        }).catch(function (error) {
+            throw new Error("Can't make directory " + JSON.stringify(path));
+        });
+    };
+
+    inner.removeDirectory = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.removeDirectory(path.outer);
+        }).catch(function (error) {
+            throw new Error("Can't remove directory " + JSON.stringify(path));
+        });
+    };
+
+    inner.remove = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.remove(path.outer);
+        }).catch(function (error) {
+            throw new Error("Can't remove " + JSON.stringify(path));
+        });
+    };
+
+    inner.makeTree = function (path) {
+        return attenuate(path).then(function (path) {
+            return outer.makeT ...</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
     </ul>
 
 
@@ -9672,21 +10090,21 @@ exports.TemporaryRedirect = function (location, status, tree) {
     return parsed;
 }</pre></li>
     <li>example usage<pre class="apidocCodePre">...
-FS.listTree(".coverage_data", function (name, stat) {
-return (/^\.coverage_data\/coveragefile/).test(name);
-})
-.then(function (list) {
-return Q.all(list.map(function (file) {
-    return FS.read(file)
-    .then(function (content) {
-        return JSON.<span class="apidocCodeKeywordSpan">parse</span>(content);
-    })
-    .then(function (coverage) {
-        console.log("&lt;table&gt;");
-        console.log("    &lt;thead&gt;");
-        console.log("        &lt;tr&gt;");
-        console.log("            &lt;th&gt;File&lt;/th&gt;");
-        console.log("            &lt;th&gt;Percentage&lt;/th&gt;");
+exports.Client = Client;
+function Client(fs) {
+var self = Object.create(Client.prototype);
+
+self.request = function (request) {
+    return Q.when(request, function (request) {
+        request = HTTP.normalizeRequest(request);
+        var url = URL.<span class="apidocCodeKeywordSpan">parse</span>(request.url);
+        if (url.protocol !== "file:") {
+            return {
+                status: 404,
+                headers: {},
+                body: ["Can't access protocol " + url.protocol]
+            };
+        } else {
 ...</pre></li>
     </ul>
 
@@ -11243,6 +11661,118 @@ if (exports.<span class="apidocCodeKeywordSpan">statusWithNoEntityBody</span>(st
 
 
 
+
+
+</div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.q-io.writer" id="apidoc.module.q-io.writer">module q-io.writer</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.q-io.writer.writer" id="apidoc.element.q-io.writer.writer">
+        function <span class="apidocSignatureSpan">q-io.</span>writer
+        <span class="apidocSignatureSpan">(_stream, charset)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function Writer(_stream, charset) {
+    var self = Object.create(Writer.prototype);
+
+    if (charset &amp;&amp; _stream.setEncoding) // TODO complain about inconsistency
+        _stream.setEncoding(charset);
+
+    var drained = Q.defer();
+
+    _stream.on("error", function (reason) {
+        drained.reject(reason);
+        drained = Q.defer();
+    });
+
+    _stream.on("drain", function () {
+        drained.resolve();
+        drained = Q.defer();
+    });
+
+<span class="apidocCodeCommentSpan">    /***
+     * Writes content to the stream.
+     * @param {String} content
+     * @returns {Promise * Undefined} a promise that will
+     * be resolved when the buffer is empty, meaning
+     * that all of the content has been sent.
+     */
+</span>    self.write = function (content) {
+        if (!_stream.writeable &amp;&amp; !_stream.writable)
+            return Q.reject(new Error("Can't write to non-writable (possibly closed) stream"));
+        if (typeof content !== "string") {
+            content = new Buffer(content);
+        }
+        if (!_stream.write(content)) {
+            return drained.promise;
+        } else {
+            return Q.resolve();
+        }
+    };
+
+    /***
+     * Waits for all data to flush on the stream.
+     *
+     * @returns {Promise * Undefined} a promise that will
+     * be resolved when the buffer is empty
+     */
+    self.flush = function () {
+        return drained.promise;
+    };
+
+    /***
+     * Closes the stream, waiting for the internal buffer
+     * to flush.
+     *
+     * @returns {Promise * Undefined} a promise that will
+     * be resolved when the stream has finished writing,
+     * flushing, and closed.
+     */
+    self.close = function () {
+        var finished;
+
+        if (supportsFinish) { // new Streams, listen for `finish` event
+            finished = Q.defer();
+            _stream.on("finish", function () {
+                finished.resolve();
+            });
+            _stream.on("error", function (reason) {
+                finished.reject(reason);
+            });
+        }
+
+        _stream.end();
+        drained.resolve(); // we will get no further drain events
+        if (finished) { // closing not explicitly observable
+            return finished.promise;
+        } else {
+            return Q(); // just resolve for old Streams
+        }
+    };
+
+    /***
+     * Terminates writing on a stream, closing before
+     * the internal buffer drains.
+     *
+     * @returns {Promise * Undefined} a promise that will
+     * be resolved when the stream has finished closing.
+     */
+    self.destroy = function () {
+        _stream.destroy();
+        drained.resolve(); // we will get no further drain events
+        return Q.resolve(); // destruction not explicitly observable
+    };
+
+    self.node = _stream;
+
+    return Q(self); // todo returns the begin.promise
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
 
 
 </div>

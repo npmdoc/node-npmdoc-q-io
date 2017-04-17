@@ -1,13 +1,16 @@
-<svg height="158" width="720" xmlns="http://www.w3.org/2000/svg">
-<rect height="158" fill="#555" width="720"></rect>
+<svg height="206" width="720" xmlns="http://www.w3.org/2000/svg">
+<rect height="206" fill="#555" width="720"></rect>
 <text fill="#7f7" font-family="Courier New" font-size="12" xml:space="preserve">
-<tspan x="10" y="26">└─┬ q-io@1.13.2 </tspan>
-<tspan x="10" y="42">  ├─┬ collections@0.2.2 </tspan>
-<tspan x="10" y="58">  │ └── weak-map@1.0.0 </tspan>
-<tspan x="10" y="74">  ├── mime@1.3.4 </tspan>
-<tspan x="10" y="90">  ├── mimeparse@0.1.4 </tspan>
-<tspan x="10" y="106">  ├── q@1.5.0 </tspan>
-<tspan x="10" y="122">  ├── qs@1.2.2 </tspan>
-<tspan x="10" y="138">  └── url2@0.0.0</tspan>
+<tspan x="10" y="26">1 megabytes installed</tspan>
+<tspan x="10" y="42"></tspan>
+<tspan x="10" y="58">node_modules</tspan>
+<tspan x="10" y="74">└─┬ q-io@1.13.2 </tspan>
+<tspan x="10" y="90">  ├─┬ collections@0.2.2 </tspan>
+<tspan x="10" y="106">  │ └── weak-map@1.0.0 </tspan>
+<tspan x="10" y="122">  ├── mime@1.3.4 </tspan>
+<tspan x="10" y="138">  ├── mimeparse@0.1.4 </tspan>
+<tspan x="10" y="154">  ├── q@1.5.0 </tspan>
+<tspan x="10" y="170">  ├── qs@1.2.2 </tspan>
+<tspan x="10" y="186">  └── url2@0.0.0</tspan>
 </text>
 </svg>
